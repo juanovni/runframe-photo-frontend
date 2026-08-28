@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { QRCodeSVG } from "qrcode.react";
-import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import {
   Activity, ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, ChevronRight, CircleGauge,
@@ -30,10 +30,11 @@ type RegistrationValues = z.infer<typeof registrationSchema>;
 
 function Logo({ dark = false }: { dark?: boolean }) {
   return (
-    <div className={`brand ${dark ? "brand-dark" : ""}`}>
-      <span className="wind-lines"><i /><i /><i /></span>
-      <span><strong>SOPLA</strong><small>RUNNING CLUB</small></span>
-    </div>
+    <img
+      src="/assets/logos/sopla-white.jpg"
+      alt="SOPLA Running Club"
+      className={`brand-image`}
+    />
   );
 }
 
@@ -112,14 +113,12 @@ function frameTagline(frameId: string) {
 }
 
 function Shell({ children, back, tone = "light", topbarClassName }: { children: React.ReactNode; back?: string; tone?: "light" | "dark"; topbarClassName?: string }) {
-  const location = useLocation();
-  const topbarStyle = location.pathname === "/kiosk" ? { background: "#35B7D2", borderColor: "rgba(255,255,255,.12)" } : undefined;
   return (
     <div className={`app-shell ${tone}`}>
-      <header className={`topbar ${topbarClassName ?? ""}`.trim()} style={topbarStyle}>
+      <header className={`topbar ${topbarClassName ?? ""}`.trim()}>
         <div className="topbar-side">{back && <Link className="icon-button" to={back} aria-label="Volver"><ArrowLeft /></Link>}</div>
         <Link to="/" aria-label="Inicio"><Logo dark={tone === "dark"} /></Link>
-        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-[10px] font-bold text-white">RUN 10K · 2026</span></div>
+        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-lg font-bold text-white">RUN 10K · 2026</span></div>
       </header>
       <main>{children}</main>
       {/* <PrototypeBadge /> */}
@@ -322,7 +321,7 @@ function KioskStart() {
   };
 
   return (
-    <Shell back="/" tone="dark" topbarClassName="topbar-kiosk-start"><div className="kiosk-start"><div className="scan-orbit"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><span className="wrist-icon"><Watch /></span></div><span className="overline">ESTACION FOTOGRAFICA</span><h1>Acerca tu pulsera<br /><em>al lector</em></h1><p>Escanea el codigo QR para comenzar tu experiencia.</p>{scanning && <div className="qr-camera"><video ref={videoRef} playsInline muted /><span><ScanLine /></span></div>}<div className="kiosk-actions"><button className="button bright" onClick={startScanner}><QrCode /> Escanear QR</button><div className="divider"><span>o ingresa el token</span></div><div className="manual-token"><input value={token} onChange={(event) => setToken(event.target.value)} placeholder="SOPLA-A7K92" /><button onClick={() => enter(token)}><ArrowRight /></button></div><button className="demo-link" onClick={() => { selectParticipant(demoParticipant.id); navigate("/kiosk/frames"); }}><Sparkles /> Usar participante demo</button>{message && <p className="kiosk-message">{message}</p>}</div></div></Shell>
+    <Shell back="/" tone="dark"><div className="kiosk-start"><div className="scan-orbit"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><span className="wrist-icon"><Watch /></span></div><span className="overline">ESTACION FOTOGRAFICA</span><h1>Acerca tu pulsera<br /><em>al lector</em></h1><p>Escanea el codigo QR para comenzar tu experiencia.</p>{scanning && <div className="qr-camera"><video ref={videoRef} playsInline muted /><span><ScanLine /></span></div>}<div className="kiosk-actions"><button className="button bright" onClick={startScanner}><QrCode /> Escanear QR</button><div className="divider"><span>o ingresa el token</span></div><div className="manual-token"><input value={token} onChange={(event) => setToken(event.target.value)} placeholder="SOPLA-A7K92" /><button onClick={() => enter(token)}><ArrowRight /></button></div><button className="demo-link" onClick={() => { selectParticipant(demoParticipant.id); navigate("/kiosk/frames"); }}><Sparkles /> Usar participante demo</button>{message && <p className="kiosk-message">{message}</p>}</div></div></Shell>
   );
 }
 
@@ -333,6 +332,7 @@ function FrameSelection() {
   const participant = useCurrentParticipant();
   if (!participant) return <Navigate to="/kiosk" replace />;
   const selectedFrame = frames.find((frame) => frame.id === selectedFrameId) ?? frames[0];
+  const approvedPhotos = 4 - participant.photosRemaining;
 
   return (
     <Shell back="/kiosk">
@@ -340,14 +340,13 @@ function FrameSelection() {
         <section className="frames-hero">
           <div className="frames-copy">
             <span className="frames-kicker">Corredora activa · {participant.name}</span>
-            <h1>Elige tu imagen de llegada.</h1>
+            <h1>Elige tu imagen <span className="frames-accent-word">de llegada</span></h1>
           </div>
 
           <aside className="frames-meta">
             <div className="frames-meta-card">
-              <small>Cupo disponible</small>
-              <strong>{participant.photosRemaining}</strong>
-              <span>de 4 fotografias posibles</span>
+              <strong>{participant.photosRemaining}/{participant.photosRemaining + approvedPhotos}</strong>
+              <span>Fotos disponibles</span>
             </div>
           </aside>
         </section>
@@ -411,6 +410,7 @@ function CameraCapture() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [cameraState, setCameraState] = useState<"loading" | "ready" | "blocked">("loading");
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -420,7 +420,26 @@ function CameraCapture() {
     return () => { mounted = false; streamRef.current?.getTracks().forEach((track) => track.stop()); };
   }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px) and (max-width: 1100px)");
+    const sync = () => setIsTablet(media.matches);
+    sync();
+    media.addListener(sync);
+    return () => media.removeListener(sync);
+  }, []);
+
   if (!participant) return <Navigate to="/kiosk" replace />;
+  const cameraWindowStyle = selectedFrame.overlayImage && selectedFrame.cameraWindow
+    ? isTablet
+      ? { left: "4%", top: "10%", width: "92%", height: "76%", borderRadius: "48px" }
+      : {
+          left: `${selectedFrame.cameraWindow.x * 100}%`,
+          top: `${selectedFrame.cameraWindow.y * 100}%`,
+          width: `${selectedFrame.cameraWindow.width * 100}%`,
+          height: `${selectedFrame.cameraWindow.height * 100}%`,
+          borderRadius: `${selectedFrame.cameraWindow.radius ?? 0}px`
+        }
+    : undefined;
   const finishCapture = async (raw: string) => {
     const framed = await composePhoto(raw, selectedFrame, participant);
     setDraftPhoto({ raw, framed });
@@ -445,7 +464,7 @@ function CameraCapture() {
     reader.onload = () => finishCapture(String(reader.result));
     reader.readAsDataURL(file);
   };
-  return <div className="camera-page"><div className="camera-view">{selectedFrame.overlayImage && selectedFrame.cameraWindow ? <div className="camera-window" style={{ left: `${selectedFrame.cameraWindow.x * 100}%`, top: `${selectedFrame.cameraWindow.y * 100}%`, width: `${selectedFrame.cameraWindow.width * 100}%`, height: `${selectedFrame.cameraWindow.height * 100}%`, borderRadius: `${selectedFrame.cameraWindow.radius ?? 0}px` }}><video ref={videoRef} playsInline muted /></div> : <video ref={videoRef} playsInline muted />}<Link to="/kiosk/frames" className="camera-close icon-button light" aria-label="Volver"><X /></Link>{selectedFrame.overlayImage ? <img className="camera-overlay-image" src={selectedFrame.overlayImage} alt={`Guia visual de ${selectedFrame.name}`} /> : <div className="camera-output-frame"><div className="camera-output-header"><Logo dark /><span>{selectedFrame.eyebrow}</span></div><div className="camera-output-body" /><div className="camera-output-footer"><div><strong>{selectedFrame.title}</strong><small>{selectedFrame.subtitle}</small></div><span>Patrocinadores</span></div></div>}<div className={`camera-guide ${selectedFrame.overlayImage ? "overlay-guide" : ""}`}><span className="guide-top">MIRA AL FRENTE Y SONRIE</span><span className="face-guide" /><span className="guide-bottom">Ubicate dentro de la guia</span></div>{countdown && <div className="countdown">{countdown}</div>}{cameraState === "loading" && <div className="camera-state"><RefreshCw className="spin" /><strong>Preparando camara...</strong></div>}{cameraState === "blocked" && <div className="camera-state"><Camera /><strong>Camara no disponible</strong><span>Puedes cargar una foto o usar la imagen demo.</span></div>}</div><div className="camera-controls"><button className="control-option" onClick={() => fileRef.current?.click()}><Upload /> Cargar foto</button><button className="shutter" onClick={takePhoto} disabled={cameraState !== "ready" || countdown !== null}><span /></button><button className="control-option" onClick={() => finishCapture(createDemoPhoto())}><Sparkles /> Foto demo</button><input ref={fileRef} hidden type="file" accept="image/*" capture="user" onChange={(event) => upload(event.target.files?.[0])} /></div></div>;
+  return <div className="camera-page"><div className="camera-view">{selectedFrame.overlayImage && selectedFrame.cameraWindow ? <div className="camera-window" style={cameraWindowStyle}><video ref={videoRef} playsInline muted /></div> : <video ref={videoRef} playsInline muted />}<Link to="/kiosk/frames" className="camera-close icon-button light" aria-label="Volver"><X /></Link>{selectedFrame.overlayImage ? <img className="camera-overlay-image" src={selectedFrame.overlayImage} alt={`Guia visual de ${selectedFrame.name}`} /> : <div className="camera-output-frame"><div className="camera-output-header"><Logo dark /><span>{selectedFrame.eyebrow}</span></div><div className="camera-output-body" /><div className="camera-output-footer"><div><strong>{selectedFrame.title}</strong><small>{selectedFrame.subtitle}</small></div><span>Patrocinadores</span></div></div>}<div className={`camera-guide ${selectedFrame.overlayImage ? "overlay-guide" : ""}`}><span className="guide-top">MIRA AL FRENTE Y SONRIE</span><span className="face-guide" /><span className="guide-bottom">Ubicate dentro de la guia</span></div>{countdown && <div className="countdown">{countdown}</div>}{cameraState === "loading" && <div className="camera-state"><RefreshCw className="spin" /><strong>Preparando camara...</strong></div>}{cameraState === "blocked" && <div className="camera-state"><Camera /><strong>Camara no disponible</strong><span>Puedes cargar una foto o usar la imagen demo.</span></div>}</div><div className="camera-controls"><button className="control-option" onClick={() => fileRef.current?.click()}><Upload /> Cargar foto</button><button className="shutter" onClick={takePhoto} disabled={cameraState !== "ready" || countdown !== null}><span /></button><button className="control-option" onClick={() => finishCapture(createDemoPhoto())}><Sparkles /> Foto demo</button><input ref={fileRef} hidden type="file" accept="image/*" capture="user" onChange={(event) => upload(event.target.files?.[0])} /></div></div>;
 }
 
 function ReviewPhoto() {
@@ -464,7 +483,30 @@ function ReviewPhoto() {
     approvePhoto(photo);
     navigate("/kiosk/gallery");
   };
-  return <Shell tone="dark"><div className="review-page"><div className="review-copy"><span className="overline">REVISA TU FOTO</span><h1>¿Es tu<br /><em>momento?</em></h1><p>Solo al aprobar se descuenta una de tus cuatro fotografias.</p><div className="remaining-note"><strong>{participant.photosRemaining}</strong><span>fotografias disponibles</span></div></div><div className="photo-result"><img src={draft.framed} alt="Fotografia con marco SOPLA" /></div><div className="review-actions"><button className="button outline-light large" onClick={() => { setDraftPhoto(null); navigate("/kiosk/camera"); }}><RefreshCw /> Repetir</button><button className="button bright large" onClick={approve} disabled={saving}><Check /> {saving ? "Guardando..." : "Aprobar foto"}</button></div></div></Shell>;
+  return (
+    <Shell tone="dark">
+      <div className="review-page review-centered-page">
+        <div className="review-copy review-copy-centered">
+          <span className="overline">REVISA TU FOTO</span>
+          <h1>¿Es tu<br /><em>momento?</em></h1>
+          <p>Solo al aprobar se descuenta una de tus cuatro fotografias.</p>
+        </div>
+
+        <div className="photo-result review-photo-centered">
+          <img src={draft.framed} alt="Fotografia con marco SOPLA" />
+        </div>
+
+        <div className="sticky-action refined-action-bar review-action-bar">
+          <button className="button ghost large review-secondary-cta" onClick={() => { setDraftPhoto(null); navigate("/kiosk/camera"); }}>
+            <RefreshCw /> Repetir
+          </button>
+          <button className="button refined-cta large" onClick={approve} disabled={saving}>
+            <Check /> {saving ? "Guardando..." : "Aprobar foto"}
+          </button>
+        </div>
+      </div>
+    </Shell>
+  );
 }
 
 function Gallery() {

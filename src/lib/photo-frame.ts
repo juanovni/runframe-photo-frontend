@@ -123,19 +123,21 @@ async function composeWithOverlay(rawDataUrl: string, overlayPath: string, frame
 
   if (!overlay) return null;
 
+  const canvasWidth = overlay.naturalWidth || WIDTH;
+  const canvasHeight = overlay.naturalHeight || HEIGHT;
   const canvas = document.createElement("canvas");
-  canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const ctx = canvas.getContext("2d")!;
 
   ctx.fillStyle = "#d9f6fb";
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   if (frame.cameraWindow) {
-    const x = WIDTH * frame.cameraWindow.x;
-    const y = HEIGHT * frame.cameraWindow.y;
-    const width = WIDTH * frame.cameraWindow.width;
-    const height = HEIGHT * frame.cameraWindow.height;
+    const x = canvasWidth * frame.cameraWindow.x;
+    const y = canvasHeight * frame.cameraWindow.y;
+    const width = canvasWidth * frame.cameraWindow.width;
+    const height = canvasHeight * frame.cameraWindow.height;
 
     ctx.save();
     ctx.beginPath();
@@ -144,10 +146,13 @@ async function composeWithOverlay(rawDataUrl: string, overlayPath: string, frame
     fitImageInRect(ctx, photo, photo.naturalWidth, photo.naturalHeight, x, y, width, height);
     ctx.restore();
   } else {
-    fitImage(ctx, photo, photo.naturalWidth, photo.naturalHeight);
+    const scale = Math.max(canvasWidth / photo.naturalWidth, canvasHeight / photo.naturalHeight);
+    const drawWidth = photo.naturalWidth * scale;
+    const drawHeight = photo.naturalHeight * scale;
+    ctx.drawImage(photo, (canvasWidth - drawWidth) / 2, (canvasHeight - drawHeight) / 2, drawWidth, drawHeight);
   }
 
-  ctx.drawImage(overlay, 0, 0, WIDTH, HEIGHT);
+  ctx.drawImage(overlay, 0, 0, canvasWidth, canvasHeight);
 
   return canvas.toDataURL("image/jpeg", 0.92);
 }
