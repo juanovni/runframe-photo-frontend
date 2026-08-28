@@ -7,9 +7,11 @@
 .phpunit.result.cache
 /.fleet
 /.idea
+/.agents
 /.nova
 /.opencode
 /.phpunit.cache
+/.claude
 /.vscode
 /.zed
 /auth.json
