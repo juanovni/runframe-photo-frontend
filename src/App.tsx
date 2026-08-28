@@ -11,7 +11,7 @@ import {
   RefreshCw, RotateCcw, ScanLine, ShieldCheck, Sparkles, Trash2, Upload, Users, Watch, X
 } from "lucide-react";
 import { activateWristband, registerParticipant, simulateExternalAction } from "./api/demo.api";
-import { captureVideoFrame, composePhoto, createDemoPhoto } from "./lib/photo-frame";
+import { captureVideoFrame, composePhoto, createDemoPhoto, getEffectiveCameraWindow } from "./lib/photo-frame";
 import { demoParticipant, frames, seededStats } from "./mocks";
 import { deletePhotoImage, getPhotoImage, savePhotoImage } from "./storage/photos";
 import { useDemoStore } from "./store/demo.store";
@@ -410,7 +410,6 @@ function CameraCapture() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [cameraState, setCameraState] = useState<"loading" | "ready" | "blocked">("loading");
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -420,25 +419,16 @@ function CameraCapture() {
     return () => { mounted = false; streamRef.current?.getTracks().forEach((track) => track.stop()); };
   }, []);
 
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 768px) and (max-width: 1100px)");
-    const sync = () => setIsTablet(media.matches);
-    sync();
-    media.addListener(sync);
-    return () => media.removeListener(sync);
-  }, []);
-
   if (!participant) return <Navigate to="/kiosk" replace />;
-  const cameraWindowStyle = selectedFrame.overlayImage && selectedFrame.cameraWindow
-    ? isTablet
-      ? { left: "4%", top: "10%", width: "92%", height: "76%", borderRadius: "48px" }
-      : {
-          left: `${selectedFrame.cameraWindow.x * 100}%`,
-          top: `${selectedFrame.cameraWindow.y * 100}%`,
-          width: `${selectedFrame.cameraWindow.width * 100}%`,
-          height: `${selectedFrame.cameraWindow.height * 100}%`,
-          borderRadius: `${selectedFrame.cameraWindow.radius ?? 0}px`
-        }
+  const effectiveCameraWindow = getEffectiveCameraWindow(selectedFrame);
+  const cameraWindowStyle = selectedFrame.overlayImage && effectiveCameraWindow
+    ? {
+        left: `${effectiveCameraWindow.x * 100}%`,
+        top: `${effectiveCameraWindow.y * 100}%`,
+        width: `${effectiveCameraWindow.width * 100}%`,
+        height: `${effectiveCameraWindow.height * 100}%`,
+        borderRadius: `${effectiveCameraWindow.radius ?? 0}px`
+      }
     : undefined;
   const finishCapture = async (raw: string) => {
     const framed = await composePhoto(raw, selectedFrame, participant);
@@ -464,7 +454,7 @@ function CameraCapture() {
     reader.onload = () => finishCapture(String(reader.result));
     reader.readAsDataURL(file);
   };
-  return <div className="camera-page"><div className="camera-view">{selectedFrame.overlayImage && selectedFrame.cameraWindow ? <div className="camera-window" style={cameraWindowStyle}><video ref={videoRef} playsInline muted /></div> : <video ref={videoRef} playsInline muted />}<Link to="/kiosk/frames" className="camera-close icon-button light" aria-label="Volver"><X /></Link>{selectedFrame.overlayImage ? <img className="camera-overlay-image" src={selectedFrame.overlayImage} alt={`Guia visual de ${selectedFrame.name}`} /> : <div className="camera-output-frame"><div className="camera-output-header"><Logo dark /><span>{selectedFrame.eyebrow}</span></div><div className="camera-output-body" /><div className="camera-output-footer"><div><strong>{selectedFrame.title}</strong><small>{selectedFrame.subtitle}</small></div><span>Patrocinadores</span></div></div>}<div className={`camera-guide ${selectedFrame.overlayImage ? "overlay-guide" : ""}`}><span className="guide-top">MIRA AL FRENTE Y SONRIE</span><span className="face-guide" /><span className="guide-bottom">Ubicate dentro de la guia</span></div>{countdown && <div className="countdown">{countdown}</div>}{cameraState === "loading" && <div className="camera-state"><RefreshCw className="spin" /><strong>Preparando camara...</strong></div>}{cameraState === "blocked" && <div className="camera-state"><Camera /><strong>Camara no disponible</strong><span>Puedes cargar una foto o usar la imagen demo.</span></div>}</div><div className="camera-controls"><button className="control-option" onClick={() => fileRef.current?.click()}><Upload /> Cargar foto</button><button className="shutter" onClick={takePhoto} disabled={cameraState !== "ready" || countdown !== null}><span /></button><button className="control-option" onClick={() => finishCapture(createDemoPhoto())}><Sparkles /> Foto demo</button><input ref={fileRef} hidden type="file" accept="image/*" capture="user" onChange={(event) => upload(event.target.files?.[0])} /></div></div>;
+  return <div className="camera-page"><div className="camera-view">{selectedFrame.overlayImage && effectiveCameraWindow ? <div className="camera-window" style={cameraWindowStyle}><video ref={videoRef} playsInline muted /></div> : <video ref={videoRef} playsInline muted />}<Link to="/kiosk/frames" className="camera-close icon-button light" aria-label="Volver"><X /></Link>{selectedFrame.overlayImage ? <img className="camera-overlay-image" src={selectedFrame.overlayImage} alt={`Guia visual de ${selectedFrame.name}`} /> : <div className="camera-output-frame"><div className="camera-output-header"><Logo dark /><span>{selectedFrame.eyebrow}</span></div><div className="camera-output-body" /><div className="camera-output-footer"><div><strong>{selectedFrame.title}</strong><small>{selectedFrame.subtitle}</small></div><span>Patrocinadores</span></div></div>}<div className={`camera-guide ${selectedFrame.overlayImage ? "overlay-guide" : ""}`}><span className="guide-top">MIRA AL FRENTE Y SONRIE</span><span className="face-guide" /><span className="guide-bottom">Ubicate dentro de la guia</span></div>{countdown && <div className="countdown">{countdown}</div>}{cameraState === "loading" && <div className="camera-state"><RefreshCw className="spin" /><strong>Preparando camara...</strong></div>}{cameraState === "blocked" && <div className="camera-state"><Camera /><strong>Camara no disponible</strong><span>Puedes cargar una foto o usar la imagen demo.</span></div>}</div><div className="camera-controls"><button className="control-option" onClick={() => fileRef.current?.click()}><Upload /> Cargar foto</button><button className="shutter" onClick={takePhoto} disabled={cameraState !== "ready" || countdown !== null}><span /></button><button className="control-option" onClick={() => finishCapture(createDemoPhoto())}><Sparkles /> Foto demo</button><input ref={fileRef} hidden type="file" accept="image/*" capture="user" onChange={(event) => upload(event.target.files?.[0])} /></div></div>;
 }
 
 function ReviewPhoto() {

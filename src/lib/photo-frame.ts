@@ -9,6 +9,25 @@ const LOGO_PATHS = {
   claro: "/assets/logos/claro.png"
 } as const;
 
+export function getEffectiveCameraWindow(frame: FrameTemplate) {
+  if (!frame.cameraWindow) return undefined;
+
+  if (typeof window !== "undefined") {
+    const isTablet = window.matchMedia("(min-width: 768px) and (max-width: 1100px)").matches;
+    if (isTablet) {
+      return {
+        x: 0.04,
+        y: 0.10,
+        width: 0.92,
+        height: 0.76,
+        radius: 48
+      };
+    }
+  }
+
+  return frame.cameraWindow;
+}
+
 function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, radius);
@@ -133,15 +152,17 @@ async function composeWithOverlay(rawDataUrl: string, overlayPath: string, frame
   ctx.fillStyle = "#d9f6fb";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  if (frame.cameraWindow) {
-    const x = canvasWidth * frame.cameraWindow.x;
-    const y = canvasHeight * frame.cameraWindow.y;
-    const width = canvasWidth * frame.cameraWindow.width;
-    const height = canvasHeight * frame.cameraWindow.height;
+  const effectiveWindow = getEffectiveCameraWindow(frame);
+
+  if (effectiveWindow) {
+    const x = canvasWidth * effectiveWindow.x;
+    const y = canvasHeight * effectiveWindow.y;
+    const width = canvasWidth * effectiveWindow.width;
+    const height = canvasHeight * effectiveWindow.height;
 
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, frame.cameraWindow.radius ?? 0);
+    ctx.roundRect(x, y, width, height, effectiveWindow.radius ?? 0);
     ctx.clip();
     fitImageInRect(ctx, photo, photo.naturalWidth, photo.naturalHeight, x, y, width, height);
     ctx.restore();
