@@ -16,10 +16,10 @@ export function getEffectiveCameraWindow(frame: FrameTemplate) {
     const isTablet = window.matchMedia("(min-width: 768px) and (max-width: 1100px)").matches;
     if (isTablet) {
       return {
-        x: 0.04,
+        x: 0.03,
         y: 0.10,
-        width: 0.92,
-        height: 0.76,
+        width: 0.94,
+        height: 0.78,
         radius: 48
       };
     }
