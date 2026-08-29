@@ -26,7 +26,16 @@ export const frames: FrameTemplate[] = [
     title: "SOPLA TEAM",
     subtitle: "CADA PASO CUENTA",
     accent: "#87e4f2",
-    dark: "#09213d"
+    dark: "#09213d",
+    previewImage: "/assets/frames/team-selector.jpg",
+    overlayImage: "/assets/frames/imparable-overlay.png",
+    cameraWindow: {
+      x: 0.512,
+      y: 0.152,
+      width: 0.47,
+      height: 0.53,
+      radius: 32
+    }
   },
   {
     id: "guayaquil",
@@ -35,7 +44,16 @@ export const frames: FrameTemplate[] = [
     title: "GUAYAQUIL",
     subtitle: "LA META ES TUYA",
     accent: "#ffcf58",
-    dark: "#093054"
+    dark: "#093054",
+    previewImage: "/assets/frames/guayaquil-selector.jpg",
+    overlayImage: "/assets/frames/finisher-overlay.png",
+    cameraWindow: {
+      x: 0.512,
+      y: 0.152,
+      width: 0.47,
+      height: 0.53,
+      radius: 32
+    }
   },
   {
     id: "sponsor",
@@ -44,7 +62,16 @@ export const frames: FrameTemplate[] = [
     title: "IMPARABLE",
     subtitle: "SOPLA RUN 2026",
     accent: "#ff6f61",
-    dark: "#072540"
+    dark: "#072540",
+    previewImage: "/assets/frames/imparable-selector.jpg",
+    overlayImage: "/assets/frames/imparable-overlay.png",
+    cameraWindow: {
+      x: 0.08,
+      y: 0.12,
+      width: 0.84,
+      height: 0.68,
+      radius: 28
+    }
   }
 ];
 
