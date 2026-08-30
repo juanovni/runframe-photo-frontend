@@ -394,6 +394,18 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   box-shadow: 0 0 0 2px rgba(53, 183, 210, 0.95), 0 26px 54px rgba(53, 183, 210, 0.18);
 }
 
+.refined-card.used {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: saturate(0.7);
+  box-shadow: none;
+}
+
+.refined-card.used:hover {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
 .refined-preview {
   height: 406px;
   padding: 0;
@@ -437,6 +449,10 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   box-shadow: 0 10px 24px rgba(53, 183, 210, 0.28);
+}
+
+.refined-card.used .frame-preview-badge {
+  background: rgba(14, 39, 71, 0.92);
 }
 
 .frame-preview-caption {
@@ -651,6 +667,22 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.frame-status-used {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #edf1f4;
+  color: #6f838f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -994,6 +1026,20 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   object-position: center 35%;
 }
 
+.shutter {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-self: center;
+  justify-self: center;
+  line-height: 0;
+}
+
+.shutter span {
+  flex: 0 0 auto;
+}
+
 .overlay-guide .guide-bottom {
   display: none;
 }
@@ -1008,7 +1054,7 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
 
   .camera-stage {
     width: auto;
-    height: 100%;
+    height: 92%;
     max-width: 100%;
   }
 
@@ -1037,13 +1083,20 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   }
 
   .shutter {
+    flex: 0 0 74px;
     width: 74px;
     height: 74px;
+    min-width: 74px;
+    min-height: 74px;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    align-self: center;
   }
 
   .shutter span {
-    width: 48px;
-    height: 48px;
+    width: 58px;
+    height: 58px;
+    margin-left: 4px;
   }
 
   .camera-overlay-image {
