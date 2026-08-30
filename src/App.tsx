@@ -329,8 +329,16 @@ function FrameSelection() {
   const navigate = useNavigate();
   const selectedFrameId = useDemoStore((state) => state.selectedFrameId);
   const selectFrame = useDemoStore((state) => state.selectFrame);
+  const photos = useDemoStore((state) => state.photos);
   const participant = useCurrentParticipant();
   if (!participant) return <Navigate to="/kiosk" replace />;
+  const participantPhotos = photos.filter((photo) => photo.participantId === participant.id);
+  const usedFrameIds = new Set(participantPhotos.map((photo) => photo.frameId));
+  const availableFrames = frames.filter((frame) => !usedFrameIds.has(frame.id));
+  useEffect(() => {
+    if (!usedFrameIds.has(selectedFrameId) || availableFrames.length === 0) return;
+    selectFrame(availableFrames[0].id);
+  }, [availableFrames, selectFrame, selectedFrameId, usedFrameIds]);
   const selectedFrame = frames.find((frame) => frame.id === selectedFrameId) ?? frames[0];
   const approvedPhotos = 4 - participant.photosRemaining;
 
@@ -341,6 +349,7 @@ function FrameSelection() {
           <div className="frames-copy">
             <span className="frames-kicker">Corredora activa · {participant.name}</span>
             <h1>Elige tu imagen <span className="frames-accent-word">de llegada</span></h1>
+            <p>Cada corredor puede usar cada marco una sola vez.</p>
           </div>
 
           <aside className="frames-meta">
@@ -354,19 +363,22 @@ function FrameSelection() {
         <div className="frame-grid refined-grid">
           {frames.map((frame) => {
             const isSelected = selectedFrameId === frame.id;
+            const isUsed = usedFrameIds.has(frame.id);
 
             return (
-              <div key={frame.id} className="frame-card-shell" style={{ "--accent": frame.accent, "--dark": frame.dark } as React.CSSProperties}>
+              <div key={frame.id} className={`frame-card-shell ${isUsed ? "used" : ""}`} style={{ "--accent": frame.accent, "--dark": frame.dark } as React.CSSProperties}>
                 <button
-                  className={`frame-card refined-card ${isSelected ? "selected" : ""}`}
-                  onClick={() => selectFrame(frame.id)}
+                  className={`frame-card refined-card ${isSelected ? "selected" : ""} ${isUsed ? "used" : ""}`}
+                  onClick={() => { if (!isUsed) selectFrame(frame.id); }}
+                  disabled={isUsed}
+                  aria-disabled={isUsed}
                 >
                   <span className={`frame-preview refined-preview ${frame.previewImage ? "has-preview-image" : ""}`}>
                     {frame.previewImage ? <img className="frame-preview-image" src={frame.previewImage} alt={`Vista previa de ${frame.name}`} /> : null}
                     <span className="frame-preview-overlay" />
                     <div className="frame-preview-topline">
                       {frame.previewImage ? null : <Logo dark />}
-                      <span className="frame-preview-badge">{frame.title}</span>
+                      <span className="frame-preview-badge">{isUsed ? "Ya usada" : frame.title}</span>
                     </div>
                     <FramePreviewContent frame={frame} />
                     {isSelected ? <span className="selected-check preview-check"><Check /></span> : null}
@@ -376,9 +388,9 @@ function FrameSelection() {
                 <div className="frame-name refined-name">
                   <span>
                     <strong>{frame.name}</strong>
-                    <small>{frameTagline(frame.id)}</small>
+                    <small>{isUsed ? "Ya tomaste una foto con este marco." : frameTagline(frame.id)}</small>
                   </span>
-                  {!isSelected ? <button type="button" className="frame-pick" onClick={() => selectFrame(frame.id)}>Elegir</button> : null}
+                  {isUsed ? <span className="frame-status-used">Bloqueada</span> : !isSelected ? <button type="button" className="frame-pick" onClick={() => selectFrame(frame.id)}>Elegir</button> : null}
                 </div>
               </div>
             );
@@ -391,7 +403,7 @@ function FrameSelection() {
             <strong>{selectedFrame.name}</strong>
           </div>
 
-          <button className="button primary large refined-cta" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/camera")}>
+          <button className="button primary large refined-cta" disabled={participant.photosRemaining === 0 || usedFrameIds.has(selectedFrame.id)} onClick={() => navigate("/kiosk/camera")}>
             Continuar <ArrowRight />
           </button>
         </div>
@@ -462,16 +474,20 @@ function ReviewPhoto() {
   const participant = useCurrentParticipant();
   const draft = useDemoStore((state) => state.draftPhoto);
   const selectedFrameId = useDemoStore((state) => state.selectedFrameId);
+  const photos = useDemoStore((state) => state.photos);
   const setDraftPhoto = useDemoStore((state) => state.setDraftPhoto);
   const approvePhoto = useDemoStore((state) => state.approvePhoto);
   const [saving, setSaving] = useState(false);
-  if (!participant || !draft) return <Navigate to="/kiosk/camera" replace />;
+  if (!participant) return <Navigate to="/kiosk" replace />;
+  if (!draft) return <Navigate to="/kiosk/frames" replace />;
   const approve = async () => {
     setSaving(true);
     const photo: Photo = { id: crypto.randomUUID(), participantId: participant.id, frameId: selectedFrameId, createdAt: new Date().toISOString(), publicationStatus: participant.socialConsent ? "authorized" : "private", delivered: false };
     await savePhotoImage(photo.id, draft.framed);
     approvePhoto(photo);
-    navigate("/kiosk/gallery");
+    const usedFrameIds = new Set(photos.filter((item) => item.participantId === participant.id).map((item) => item.frameId));
+    usedFrameIds.add(selectedFrameId);
+    navigate(usedFrameIds.size >= frames.length ? "/kiosk/gallery" : "/kiosk/frames");
   };
   return (
     <Shell tone="dark">

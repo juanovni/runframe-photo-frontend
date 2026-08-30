@@ -394,6 +394,18 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   box-shadow: 0 0 0 2px rgba(53, 183, 210, 0.95), 0 26px 54px rgba(53, 183, 210, 0.18);
 }
 
+.refined-card.used {
+  cursor: not-allowed;
+  opacity: 0.48;
+  filter: saturate(0.7);
+  box-shadow: none;
+}
+
+.refined-card.used:hover {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
 .refined-preview {
   height: 406px;
   padding: 0;
@@ -437,6 +449,10 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   box-shadow: 0 10px 24px rgba(53, 183, 210, 0.28);
+}
+
+.refined-card.used .frame-preview-badge {
+  background: rgba(14, 39, 71, 0.92);
 }
 
 .frame-preview-caption {
@@ -651,6 +667,22 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.frame-status-used {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #edf1f4;
+  color: #6f838f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
