@@ -744,6 +744,25 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   color: #0e2747;
 }
 
+.manual-token button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #0e2747;
+  background: #35b7d2;
+  border: 1px solid #35b7d2;
+}
+
+.manual-token button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.manual-token button:hover {
+  background: #58d3e8;
+  border-color: #58d3e8;
+}
+
 .refined-card.selected .selected-check {
   width: 34px;
   height: 34px;
