@@ -870,6 +870,15 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
     padding-top: 24px;
   }
 
+  .sticky-action {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: none;
+    padding: 0;
+  }
+
   .frames-hero {
     grid-template-columns: 1fr auto;
     align-items: end;
@@ -881,8 +890,8 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   }
 
   .frames-copy h1 {
-    max-width: 15ch;
-    font-size: 28px;
+    max-width: 13ch;
+    font-size: 32px;
     line-height: 1.05;
   }
 
@@ -921,10 +930,12 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   }
 
   .refined-action-bar {
-    padding: 14px 16px;
+    width: 100%;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
     gap: 10px;
     flex-direction: column;
     align-items: center;
+    border-radius: 0;
   }
 
   .refined-selection-copy {
