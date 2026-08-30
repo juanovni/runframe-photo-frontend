@@ -118,7 +118,7 @@ function Shell({ children, back, tone = "light", topbarClassName }: { children: 
       <header className={`topbar ${topbarClassName ?? ""}`.trim()}>
         <div className="topbar-side">{back && <Link className="icon-button" to={back} aria-label="Volver"><ArrowLeft /></Link>}</div>
         <Link to="/" aria-label="Inicio"><Logo dark={tone === "dark"} /></Link>
-        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-lg font-bold text-white">RUN 10K · 2026</span></div>
+        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-xs md:text-lg font-bold text-white">RUN 10K · 2026</span></div>
       </header>
       <main>{children}</main>
       {/* <PrototypeBadge /> */}
@@ -392,7 +392,7 @@ function FrameSelection() {
           </div>
 
           <button className="button primary large refined-cta" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/camera")}>
-            Continuar con este marco <ArrowRight />
+            Continuar <ArrowRight />
           </button>
         </div>
       </div>
