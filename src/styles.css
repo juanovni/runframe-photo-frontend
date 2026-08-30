@@ -994,6 +994,20 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   object-position: center 35%;
 }
 
+.shutter {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-self: center;
+  justify-self: center;
+  line-height: 0;
+}
+
+.shutter span {
+  flex: 0 0 auto;
+}
+
 .overlay-guide .guide-bottom {
   display: none;
 }
@@ -1008,7 +1022,7 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
 
   .camera-stage {
     width: auto;
-    height: 100%;
+    height: 92%;
     max-width: 100%;
   }
 
@@ -1037,13 +1051,20 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   }
 
   .shutter {
+    flex: 0 0 74px;
     width: 74px;
     height: 74px;
+    min-width: 74px;
+    min-height: 74px;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    align-self: center;
   }
 
   .shutter span {
-    width: 48px;
-    height: 48px;
+    width: 58px;
+    height: 58px;
+    margin-left: 4px;
   }
 
   .camera-overlay-image {
