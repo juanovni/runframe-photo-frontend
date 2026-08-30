@@ -692,7 +692,7 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
 .button.refined-cta {
   flex: 0 0 auto;
   width: auto;
-  min-width: 366px;
+  min-width: 362px;
   min-height: 56px;
   border-radius: 12px;
   padding: 16px 28px;
@@ -926,7 +926,7 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   }
 
   .refined-preview {
-    height: 240px;
+    height: 206px;
   }
 
   .refined-action-bar {
@@ -952,5 +952,110 @@ svg { width: 20px; height: 20px; stroke-width: 2; }
   .refined-cta {
     width: 100%;
     min-width: 0;
+  }
+}
+
+.camera-page {
+  height: 100dvh;
+}
+
+.camera-view {
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+.camera-controls {
+  height: 105px;
+  min-height: 105px;
+  flex-wrap: nowrap;
+}
+
+.camera-stage {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1080 / 1350;
+  overflow: hidden;
+}
+
+.camera-stage > video,
+.camera-stage > .camera-output-frame,
+.camera-stage > .camera-overlay-image,
+.camera-stage > .camera-guide,
+.camera-stage > .countdown,
+.camera-stage > .camera-state {
+  position: absolute;
+  inset: 0;
+}
+
+.camera-window video {
+  object-position: center 35%;
+}
+
+.overlay-guide .guide-bottom {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .camera-view {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #ffffff;
+  }
+
+  .camera-stage {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .camera-page {
+    grid-template-rows: minmax(0, 1fr) 96px;
+  }
+
+  .camera-view {
+    min-height: 0;
+  }
+
+  .camera-controls {
+    height: 96px;
+    min-height: 96px;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .control-option {
+    min-width: 88px;
+    font-size: 10px;
+    gap: 6px;
+  }
+
+  .control-option svg {
+    width: 16px;
+  }
+
+  .shutter {
+    width: 74px;
+    height: 74px;
+  }
+
+  .shutter span {
+    width: 48px;
+    height: 48px;
+  }
+
+  .camera-overlay-image {
+    object-fit: cover;
+    object-position: center top;
+  }
+
+  .camera-guide .guide-top {
+    top: 104px;
+  }
+
+  .camera-guide .guide-bottom {
+    bottom: 138px;
   }
 }
