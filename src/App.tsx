@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { QRCodeSVG } from "qrcode.react";
-import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import {
   Activity, ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, ChevronRight, CircleGauge,
@@ -156,6 +156,7 @@ function Home() {
 }
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
   return (
     <Shell back="/">
       <div className="admin-layout">
@@ -164,10 +165,19 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
             <Link to="/admin"><CircleGauge /> Resumen</Link>
             <Link to="/admin/register"><Plus /> Registrar corredor</Link>
             <Link to="/admin/activate"><ScanLine /> Activar pulsera</Link>
+            <Link to="/admin/social"><Image /> Revisar publicaciones</Link>
           </div>
           <div className="demo-control"><Sparkles /><strong>Demo preparada</strong><span>Ana Martinez · #1258</span><Link to="/kiosk">Abrir estacion <ChevronRight /></Link></div>
         </aside>
-        <div className="admin-content">{children}</div>
+        <div className="admin-content">
+          <nav className="admin-mobile-nav" aria-label="Navegacion de administrador">
+            <Link className={location.pathname === "/admin" ? "active" : ""} to="/admin"><CircleGauge /> Resumen</Link>
+            <Link className={location.pathname === "/admin/register" ? "active" : ""} to="/admin/register"><Plus /> Registro</Link>
+            <Link className={location.pathname === "/admin/activate" ? "active" : ""} to="/admin/activate"><ScanLine /> Activar</Link>
+            <Link className={location.pathname === "/admin/social" ? "active" : ""} to="/admin/social"><Image /> Social</Link>
+          </nav>
+          {children}
+        </div>
       </div>
     </Shell>
   );
@@ -218,7 +228,7 @@ function RegisterParticipant() {
   const addParticipant = useDemoStore((state) => state.addParticipant);
   const { register, handleSubmit, formState: { errors } } = useForm<RegistrationValues>({
     resolver: zodResolver(registrationSchema),
-    defaultValues: { name: "", bib: "", distance: "10K", whatsapp: "+593 ", photoConsent: true, socialConsent: false }
+    defaultValues: { name: "", bib: "", distance: "10K", whatsapp: "+593 ", photoConsent: true, socialConsent: true }
   });
   const mutation = useMutation({
     mutationFn: registerParticipant,
@@ -270,7 +280,7 @@ function PublicRegisterParticipant() {
             <div className="field wide"><label>WhatsApp</label><input type="tel" {...register("whatsapp")} />{errors.whatsapp && <small>{errors.whatsapp.message}</small>}</div>
             <label className="consent-card wide"><input type="checkbox" {...register("photoConsent")} /><span className="custom-check"><Check /></span><span><strong>Autorizacion para fotografias</strong><small>Permito la captura y entrega de mis fotografias durante el evento.</small></span></label>
             {errors.photoConsent && <small className="form-error wide">{errors.photoConsent.message}</small>}
-            <label className="consent-card wide"><input type="checkbox" {...register("socialConsent")} /><span className="custom-check"><Check /></span><span><strong>Redes oficiales de SOPLA</strong><small>Autorizo que las fotografias tomadas en esta experiencia puedan usarse en redes oficiales de SOPLA.</small></span></label>
+            <label className="consent-card wide"><input type="checkbox" {...register("socialConsent")} /><span className="custom-check"><Check /></span><span><strong>Redes oficiales de SOPLA</strong><small>En esta demo viene activado para mostrar la cola de aprobacion social. Autorizo que las fotografias tomadas en esta experiencia puedan usarse en redes oficiales de SOPLA.</small></span></label>
             <div className="form-actions wide"><Link className="button ghost" to="/">Cancelar</Link><button className="button primary" disabled={mutation.isPending}>{mutation.isPending ? "Creando..." : "Guardar y ver QR"}<ArrowRight /></button></div>
           </form>
         </div>
@@ -335,6 +345,63 @@ function Activation() {
     setFound(participants.find((item) => item.token.toLowerCase() === normalized || item.bib.toLowerCase() === normalized) ?? null);
   };
   return <div className="activation-page"><div className="section-heading compact"><div><span className="step-label">PASO 02 · ACTIVACION</span><h1>Activa una pulsera</h1><p>Escanea el QR o ingresa el token de prueba.</p></div></div><div className="scanner-box"><span className="scan-corners"><QrCode /></span><strong>Escaner preparado</strong><p>En esta demo tambien puedes buscar por token o dorsal.</p><div className="token-search"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="SOPLA-A7K92" onKeyDown={(event) => event.key === "Enter" && search()} /><button className="button primary" onClick={search}><ScanLine /> Buscar</button></div><button className="text-button" onClick={() => { setQuery(demoParticipant.token); setFound(participants.find((item) => item.id === demoParticipant.id) ?? null); }}>Usar token de demostracion</button></div>{found && <div className="participant-result"><span className="avatar">{found.name.charAt(0)}</span><div><small>PARTICIPANTE ENCONTRADO</small><strong>{found.name}</strong><span>Dorsal {found.bib} · {found.distance}</span></div><div className={`status ${found.wristbandStatus}`}><span /> {found.wristbandStatus === "active" ? "Activa" : "Pendiente"}</div>{found.wristbandStatus === "pending" ? <button className="button primary" onClick={() => mutation.mutate(found)}>Confirmar activacion</button> : <BadgeCheck className="result-check" />}</div>}</div>;
+}
+
+function SocialApproval() {
+  const photos = useDemoStore((state) => state.photos);
+  const participants = useDemoStore((state) => state.participants);
+  const updatePhoto = useDemoStore((state) => state.updatePhoto);
+  const [images, setImages] = useState<Record<string, string>>({});
+  const pendingPhotos = photos.filter((photo) => photo.publicationStatus === "review" || photo.publicationStatus === "authorized" || photo.publicationStatus === "scheduled");
+  const publishedPhotos = photos.filter((photo) => photo.publicationStatus === "published");
+
+  useEffect(() => {
+    Promise.all(photos.map(async (photo) => [photo.id, await getPhotoImage(photo.id)] as const)).then((entries) => {
+      setImages(Object.fromEntries(entries.filter((entry) => entry[1])) as Record<string, string>);
+    });
+  }, [photos]);
+
+  const publish = async (photo: Photo) => {
+    updatePhoto(photo.id, { publicationStatus: "scheduled" });
+    await simulateExternalAction();
+    updatePhoto(photo.id, { publicationStatus: "published" });
+  };
+
+  const reject = (photo: Photo) => updatePhoto(photo.id, { publicationStatus: "private" });
+
+  const getParticipant = (participantId: string) => participants.find((item) => item.id === participantId);
+
+  return (
+    <>
+      <div className="section-heading">
+        <div>
+          <span className="overline dark-text">MODERACION SOCIAL</span>
+          <h1>Fotos listas para aprobacion.</h1>
+          <p>Simula la revision editorial antes de publicar en Facebook e Instagram.</p>
+        </div>
+      </div>
+      <div className="stat-grid social-stat-grid">
+        <article className="stat-card stat-0"><small>Pendientes</small><strong>{pendingPhotos.length}</strong><span>Esperando revision del admin</span></article>
+        <article className="stat-card stat-1"><small>Publicadas</small><strong>{publishedPhotos.length}</strong><span>Simuladas en Facebook e Instagram</span></article>
+      </div>
+      <section className="panel social-panel">
+        <div className="panel-title"><div>COLA DE APROBACION</div><span>{pendingPhotos.length} listas para revisar</span></div>
+        {pendingPhotos.length === 0 ? <div className="social-empty"><BadgeCheck /><strong>No hay fotos pendientes</strong><p>Las proximas fotos autorizadas apareceran aqui para publicacion.</p></div> : <div className="social-grid">{pendingPhotos.map((photo) => {
+          const participant = getParticipant(photo.participantId);
+          const frame = frames.find((item) => item.id === photo.frameId);
+          return <article className="social-card" key={photo.id}><div className="social-photo">{images[photo.id] ? <img src={images[photo.id]} alt="Foto lista para moderacion" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<span className={`publication-tag ${photo.publicationStatus}`}>{photo.publicationStatus === "scheduled" ? "Publicando" : "Lista para aprobacion"}</span></div><div className="social-card-body"><strong>{participant?.name ?? "Corredor"}</strong><span>{frame?.name} · {participant?.distance}</span><small>{participant?.whatsapp}</small><div className="social-network-row"><span className="social-network-chip">Facebook</span><span className="social-network-chip">Instagram</span></div><div className="social-actions"><button className="button ghost" onClick={() => reject(photo)}>Mantener privada</button><button className="button primary" onClick={() => publish(photo)} disabled={photo.publicationStatus === "scheduled"}>{photo.publicationStatus === "scheduled" ? "Publicando..." : "Publicar ahora"}</button></div></div></article>;
+        })}</div>}
+      </section>
+      <section className="panel social-panel published-panel">
+        <div className="panel-title"><div>PUBLICADAS</div><span>Facebook e Instagram simulados</span></div>
+        {publishedPhotos.length === 0 ? <div className="social-empty compact"><Image /><strong>Aun no hay publicaciones</strong></div> : <div className="social-grid">{publishedPhotos.map((photo) => {
+          const participant = getParticipant(photo.participantId);
+          const frame = frames.find((item) => item.id === photo.frameId);
+          return <article className="social-card" key={photo.id}><div className="social-photo">{images[photo.id] ? <img src={images[photo.id]} alt="Foto publicada" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<span className="publication-tag published">Publicada</span></div><div className="social-card-body"><strong>{participant?.name ?? "Corredor"}</strong><span>{frame?.name} · {participant?.distance}</span><div className="social-network-row"><span className="social-network-chip live">Facebook</span><span className="social-network-chip live">Instagram</span></div></div></article>;
+        })}</div>}
+      </section>
+    </>
+  );
 }
 
 function KioskStart() {
@@ -416,6 +483,7 @@ function FrameSelection() {
           </div>
 
           <aside className="frames-meta">
+            {participantPhotos.length > 0 ? <Link className="frames-gallery-link frames-gallery-link-top" to="/kiosk/gallery">Ver galeria</Link> : null}
             <div className="frames-meta-card">
               <strong>{participant.photosRemaining}/{participant.photosRemaining + approvedPhotos}</strong>
               <span>Fotos disponibles</span>
@@ -545,7 +613,7 @@ function ReviewPhoto() {
   if (!draft) return <Navigate to="/kiosk/frames" replace />;
   const approve = async () => {
     setSaving(true);
-    const photo: Photo = { id: crypto.randomUUID(), participantId: participant.id, frameId: selectedFrameId, createdAt: new Date().toISOString(), publicationStatus: participant.socialConsent ? "authorized" : "private", delivered: false };
+    const photo: Photo = { id: crypto.randomUUID(), participantId: participant.id, frameId: selectedFrameId, createdAt: new Date().toISOString(), publicationStatus: participant.socialConsent ? "review" : "private", delivered: false };
     await savePhotoImage(photo.id, draft.framed);
     approvePhoto(photo);
     const usedFrameIds = new Set(photos.filter((item) => item.participantId === participant.id).map((item) => item.frameId));
@@ -593,7 +661,7 @@ function Gallery() {
   const sendGallery = async () => { setDelivery("sending"); await simulateExternalAction(); photos.forEach((photo) => updatePhoto(photo.id, { delivered: true })); setDelivery("sent"); };
   const remove = async (id: string) => { await deletePhotoImage(id); deletePhoto(id); setImages((current) => { const next = { ...current }; delete next[id]; return next; }); };
   const download = (photo: Photo) => { const link = document.createElement("a"); link.href = images[photo.id]; link.download = `SOPLA-${participant.bib}-${photo.id.slice(0, 5)}.jpg`; link.click(); };
-  return <Shell back="/kiosk/frames" badgeText={`${participant.distance} · 2026`}><div className="gallery-page"><div className="gallery-heading"><div><span className="overline dark-text">GALERIA DE {participant.name.split(" ")[0].toUpperCase()}</span><h1>Momentos para recordar.</h1><p>{photos.length} aprobadas · {participant.photosRemaining} de 4 fotografias disponibles</p></div><button className="button primary" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/frames")}><Camera /> Tomar otra foto</button></div>{photos.length === 0 ? <div className="empty-gallery"><Image /><h2>Tu galeria esta esperando</h2><p>Elige un marco y captura tu primer momento.</p><button className="button primary" onClick={() => navigate("/kiosk/frames")}>Comenzar <ArrowRight /></button></div> : <div className="gallery-grid">{photos.map((photo) => <article className="gallery-card" key={photo.id}>{images[photo.id] ? <img src={images[photo.id]} alt="Momento SOPLA aprobado" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<div className="gallery-card-info"><span><strong>{frames.find((frame) => frame.id === photo.frameId)?.name}</strong><small>{new Date(photo.createdAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}</small></span><div><button onClick={() => download(photo)} title="Descargar"><Download /></button><button onClick={() => remove(photo.id)} title="Eliminar"><Trash2 /></button></div></div><span className={`publication-tag ${photo.publicationStatus}`}>{photo.publicationStatus === "private" ? "Privada" : "Lista para redes"}</span></article>)}</div>}<div className="delivery-panel"><div><span className="whatsapp-icon"><MessageCircle /></span><span><strong>Recibe tu galeria en WhatsApp</strong><small>{participant.whatsapp}</small></span></div>{delivery === "sent" ? <span className="delivery-success"><BadgeCheck /> Galeria entregada correctamente</span> : <button className="button whatsapp" onClick={sendGallery} disabled={delivery === "sending"}>{delivery === "sending" ? "Enviando galeria..." : "Enviar ahora"}<ArrowRight /></button>}</div></div></Shell>;
+  return <Shell back="/kiosk/frames" badgeText={`${participant.distance} · 2026`}><div className="gallery-page"><div className="gallery-heading"><div><span className="overline dark-text">GALERIA DE {participant.name.split(" ")[0].toUpperCase()}</span><h1>Momentos para recordar.</h1><p>{photos.length} aprobadas · {participant.photosRemaining} de 4 fotografias disponibles</p></div><button className="button primary" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/frames")}><Camera /> Tomar otra foto</button></div>{photos.length === 0 ? <div className="empty-gallery"><Image /><h2>Tu galeria esta esperando</h2><p>Elige un marco y captura tu primer momento.</p><button className="button primary" onClick={() => navigate("/kiosk/frames")}>Comenzar <ArrowRight /></button></div> : <div className="gallery-grid">{photos.map((photo) => <article className="gallery-card" key={photo.id}>{images[photo.id] ? <img src={images[photo.id]} alt="Momento SOPLA aprobado" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<div className="gallery-card-info"><span><strong>{frames.find((frame) => frame.id === photo.frameId)?.name}</strong><small>{new Date(photo.createdAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}</small></span><div><button onClick={() => download(photo)} title="Descargar"><Download /></button><button onClick={() => remove(photo.id)} title="Eliminar"><Trash2 /></button></div></div><span className={`publication-tag ${photo.publicationStatus}`}>{photo.publicationStatus === "private" ? "Privada" : photo.publicationStatus === "published" ? "Publicada" : "Lista para aprobacion"}</span></article>)}</div>}<div className="delivery-panel"><div><span className="whatsapp-icon"><MessageCircle /></span><span><strong>Recibe tu galeria en WhatsApp</strong><small>{participant.whatsapp}</small></span></div>{delivery === "sent" ? <span className="delivery-success"><BadgeCheck /> Galeria entregada correctamente</span> : <button className="button whatsapp" onClick={sendGallery} disabled={delivery === "sending"}>{delivery === "sending" ? "Enviando galeria..." : "Enviar ahora"}<ArrowRight /></button>}</div></div></Shell>;
 }
 
 function useCurrentParticipant() {
@@ -601,5 +669,5 @@ function useCurrentParticipant() {
 }
 
 export default function App() {
-  return <Routes><Route path="/" element={<Home />} /><Route path="/admin" element={<AdminLayout><Dashboard /></AdminLayout>} /><Route path="/admin/register" element={<AdminLayout><RegisterParticipant /></AdminLayout>} /><Route path="/admin/activate" element={<AdminLayout><Activation /></AdminLayout>} /><Route path="/admin/wristband/:id" element={<AdminLayout><WristbandCard /></AdminLayout>} /><Route path="/register" element={<PublicRegisterParticipant />} /><Route path="/register/:token" element={<PublicWristbandCard />} /><Route path="/kiosk" element={<KioskStart />} /><Route path="/kiosk/frames" element={<FrameSelection />} /><Route path="/kiosk/camera" element={<CameraCapture />} /><Route path="/kiosk/review" element={<ReviewPhoto />} /><Route path="/kiosk/gallery" element={<Gallery />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+  return <Routes><Route path="/" element={<Home />} /><Route path="/admin" element={<AdminLayout><Dashboard /></AdminLayout>} /><Route path="/admin/register" element={<AdminLayout><RegisterParticipant /></AdminLayout>} /><Route path="/admin/activate" element={<AdminLayout><Activation /></AdminLayout>} /><Route path="/admin/social" element={<AdminLayout><SocialApproval /></AdminLayout>} /><Route path="/admin/wristband/:id" element={<AdminLayout><WristbandCard /></AdminLayout>} /><Route path="/register" element={<PublicRegisterParticipant />} /><Route path="/register/:token" element={<PublicWristbandCard />} /><Route path="/kiosk" element={<KioskStart />} /><Route path="/kiosk/frames" element={<FrameSelection />} /><Route path="/kiosk/camera" element={<CameraCapture />} /><Route path="/kiosk/review" element={<ReviewPhoto />} /><Route path="/kiosk/gallery" element={<Gallery />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }
