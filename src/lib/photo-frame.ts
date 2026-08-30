@@ -13,6 +13,17 @@ export function getEffectiveCameraWindow(frame: FrameTemplate) {
   if (!frame.cameraWindow) return undefined;
 
   if (typeof window !== "undefined") {
+    const isPhone = window.matchMedia("(max-width: 767px)").matches;
+    if (isPhone) {
+      return {
+        x: 0.04,
+        y: 0.11,
+        width: 0.92,
+        height: 0.66,
+        radius: 40
+      };
+    }
+
     const isTablet = window.matchMedia("(min-width: 768px) and (max-width: 1100px)").matches;
     if (isTablet) {
       return {
