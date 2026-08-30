@@ -112,13 +112,13 @@ function frameTagline(frameId: string) {
   }
 }
 
-function Shell({ children, back, tone = "light", topbarClassName }: { children: React.ReactNode; back?: string; tone?: "light" | "dark"; topbarClassName?: string }) {
+function Shell({ children, back, tone = "light", topbarClassName, badgeText = "RUN 10K · 2026" }: { children: React.ReactNode; back?: string; tone?: "light" | "dark"; topbarClassName?: string; badgeText?: string }) {
   return (
     <div className={`app-shell ${tone}`}>
       <header className={`topbar ${topbarClassName ?? ""}`.trim()}>
         <div className="topbar-side">{back && <Link className="icon-button" to={back} aria-label="Volver"><ArrowLeft /></Link>}</div>
         <Link to="/" aria-label="Inicio"><Logo dark={tone === "dark"} /></Link>
-        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-xs md:text-lg font-bold text-white">RUN 10K · 2026</span></div>
+        <div className="topbar-side end"><span className="rounded-full bg-[#0E2747] px-3 py-1 text-xs md:text-lg font-bold text-white">{badgeText}</span></div>
       </header>
       <main>{children}</main>
       {/* <PrototypeBadge /> */}
@@ -229,7 +229,7 @@ function RegisterParticipant() {
       <div className="section-heading compact"><div><span className="step-label">PASO 01 · REGISTRO</span><h1>Nuevo corredor</h1><p>Los datos se guardan localmente en este dispositivo.</p></div></div>
       <form className="registration-form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
         <div className="field wide"><label>Nombre completo</label><input autoFocus placeholder="Ej. Ana Martinez" {...register("name")} />{errors.name && <small>{errors.name.message}</small>}</div>
-        <div className="field"><label>Numero de dorsal</label><input inputMode="numeric" placeholder="1258" {...register("bib")} />{errors.bib && <small>{errors.bib.message}</small>}</div>
+        <div className="field"><label>Numero de dorsal o CI</label><input inputMode="numeric" placeholder="1258" {...register("bib")} />{errors.bib && <small>{errors.bib.message}</small>}</div>
         <div className="field"><label>Distancia</label><select {...register("distance")}><option>5K</option><option>10K</option><option>21K</option></select></div>
         <div className="field wide"><label>WhatsApp</label><input type="tel" {...register("whatsapp")} />{errors.whatsapp && <small>{errors.whatsapp.message}</small>}</div>
         <label className="consent-card wide"><input type="checkbox" {...register("photoConsent")} /><span className="custom-check"><Check /></span><span><strong>Autorizacion para fotografias</strong><small>Permito la captura y entrega de mis fotografias durante el evento.</small></span></label>
@@ -238,6 +238,44 @@ function RegisterParticipant() {
         <div className="form-actions wide"><Link className="button ghost" to="/admin">Cancelar</Link><button className="button primary" disabled={mutation.isPending}>{mutation.isPending ? "Creando..." : "Crear participante"}<ArrowRight /></button></div>
       </form>
     </div>
+  );
+}
+
+function PublicRegisterParticipant() {
+  const navigate = useNavigate();
+  const addParticipant = useDemoStore((state) => state.addParticipant);
+  const { register, handleSubmit, formState: { errors } } = useForm<RegistrationValues>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: { name: "", bib: "", distance: "10K", whatsapp: "+593 ", photoConsent: true, socialConsent: false }
+  });
+  const mutation = useMutation({
+    mutationFn: async (values: RegistrationValues) => {
+      const participant = await registerParticipant(values);
+      return { ...participant, wristbandStatus: "active" as const };
+    },
+    onSuccess: (participant) => {
+      addParticipant(participant);
+      navigate(`/register/${participant.token}`);
+    }
+  });
+  return (
+    <Shell back="/">
+      <div className="admin-content public-register-flow">
+        <div className="form-page public-form-page">
+          <div className="section-heading compact"><div><span className="step-label">REGISTRO ONLINE</span><h1>Inscribete a la experiencia</h1><p>Completa tus datos, guarda tu token y presenta tu QR el dia del evento.</p></div></div>
+          <form className="registration-form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
+            <div className="field wide"><label>Nombre completo</label><input autoFocus placeholder="Ej. Ana Martinez" {...register("name")} />{errors.name && <small>{errors.name.message}</small>}</div>
+            <div className="field"><label>CI o Dorsal</label><input inputMode="numeric" placeholder="1258" {...register("bib")} />{errors.bib && <small>{errors.bib.message}</small>}</div>
+            <div className="field"><label>Distancia</label><select {...register("distance")}><option>5K</option><option>10K</option><option>21K</option></select></div>
+            <div className="field wide"><label>WhatsApp</label><input type="tel" {...register("whatsapp")} />{errors.whatsapp && <small>{errors.whatsapp.message}</small>}</div>
+            <label className="consent-card wide"><input type="checkbox" {...register("photoConsent")} /><span className="custom-check"><Check /></span><span><strong>Autorizacion para fotografias</strong><small>Permito la captura y entrega de mis fotografias durante el evento.</small></span></label>
+            {errors.photoConsent && <small className="form-error wide">{errors.photoConsent.message}</small>}
+            <label className="consent-card wide"><input type="checkbox" {...register("socialConsent")} /><span className="custom-check"><Check /></span><span><strong>Redes oficiales de SOPLA</strong><small>Autorizo que las fotografias tomadas en esta experiencia puedan usarse en redes oficiales de SOPLA.</small></span></label>
+            <div className="form-actions wide"><Link className="button ghost" to="/">Cancelar</Link><button className="button primary" disabled={mutation.isPending}>{mutation.isPending ? "Creando..." : "Guardar y ver QR"}<ArrowRight /></button></div>
+          </form>
+        </div>
+      </div>
+    </Shell>
   );
 }
 
@@ -258,6 +296,31 @@ function WristbandCard() {
       </div>
       <div className="ticket-actions"><button className="button secondary" onClick={() => window.print()}><Printer /> Imprimir pulsera</button>{participant.wristbandStatus === "pending" ? <button className="button primary" onClick={() => mutation.mutate(participant)} disabled={mutation.isPending}><Watch /> {mutation.isPending ? "Activando..." : "Activar ahora"}</button> : <button className="button primary" onClick={() => { useDemoStore.getState().selectParticipant(participant.id); navigate("/kiosk/frames"); }}><Play /> Iniciar experiencia</button>}</div>
     </div>
+  );
+}
+
+function PublicWristbandCard() {
+  const { token } = useParams();
+  const participant = useDemoStore((state) => state.participants.find((item) => item.token.toLowerCase() === token?.toLowerCase()));
+  if (!participant) return <Navigate to="/register" replace />;
+  const qrValue = JSON.stringify({ participantId: participant.id, token: participant.token });
+  const ticketUrl = typeof window !== "undefined" ? `${window.location.origin}/register/${participant.token}` : `/register/${participant.token}`;
+  return (
+    <Shell back="/register" badgeText={`${participant.distance} · 2026`}>
+      <div className="admin-content public-register-flow">
+        <div className="wristband-page public-ticket-page">
+          <div className="success-heading"><span><Check /></span><div><small>REGISTRO COMPLETADO</small><h1>Tu QR ya esta listo.</h1></div></div>
+          <p className="public-ticket-copy">Guarda esta pantalla o imprime tu codigo. Para esta presentacion MVP, tu acceso queda activo temporalmente.</p>
+          <div className="wristband-ticket">
+            <div className="ticket-info"><Logo dark /><span className="distance-chip">{participant.distance}</span><h2>{participant.name}</h2><strong className="bib">#{participant.bib}</strong><div className={`status ${participant.wristbandStatus}`}><span /> {participant.wristbandStatus === "active" ? "Pulsera activa" : "Pendiente de activacion"}</div><dl><div><dt>Token</dt><dd>{participant.token}</dd></div><div><dt>Fotos disponibles</dt><dd>{participant.photosRemaining}</dd></div></dl></div>
+            <div className="ticket-qr"><QRCodeSVG value={qrValue} size={220} level="H" fgColor="#082745" /><small>QR LISTO PARA LA DEMO</small></div>
+          </div>
+          <div className="public-ticket-link"><small>ENLACE PERSONAL</small><strong>{ticketUrl}</strong></div>
+          <div className="public-ticket-note"><strong>Nota MVP:</strong> esta activacion automatica es temporal y solo se usa para agilizar la demostracion.</div>
+          <div className="ticket-actions public-ticket-actions"><button className="button secondary" onClick={() => window.print()}><Printer /> Imprimir pulsera</button><Link className="button ghost" to="/kiosk">Ir a la estacion</Link></div>
+        </div>
+      </div>
+    </Shell>
   );
 }
 
@@ -343,7 +406,7 @@ function FrameSelection() {
   const approvedPhotos = 4 - participant.photosRemaining;
 
   return (
-    <Shell back="/kiosk">
+    <Shell back="/kiosk" badgeText={`${participant.distance} · 2026`}>
       <div className="kiosk-content kiosk-frames-refined">
         <section className="frames-hero">
           <div className="frames-copy">
@@ -490,7 +553,7 @@ function ReviewPhoto() {
     navigate(usedFrameIds.size >= frames.length ? "/kiosk/gallery" : "/kiosk/frames");
   };
   return (
-    <Shell tone="dark">
+    <Shell tone="dark" badgeText={`${participant.distance} · 2026`}>
       <div className="review-page review-centered-page">
         <div className="review-copy review-copy-centered">
           <span className="overline">REVISA TU FOTO</span>
@@ -530,7 +593,7 @@ function Gallery() {
   const sendGallery = async () => { setDelivery("sending"); await simulateExternalAction(); photos.forEach((photo) => updatePhoto(photo.id, { delivered: true })); setDelivery("sent"); };
   const remove = async (id: string) => { await deletePhotoImage(id); deletePhoto(id); setImages((current) => { const next = { ...current }; delete next[id]; return next; }); };
   const download = (photo: Photo) => { const link = document.createElement("a"); link.href = images[photo.id]; link.download = `SOPLA-${participant.bib}-${photo.id.slice(0, 5)}.jpg`; link.click(); };
-  return <Shell back="/kiosk/frames"><div className="gallery-page"><div className="gallery-heading"><div><span className="overline dark-text">GALERIA DE {participant.name.split(" ")[0].toUpperCase()}</span><h1>Momentos para recordar.</h1><p>{photos.length} aprobadas · {participant.photosRemaining} de 4 fotografias disponibles</p></div><button className="button primary" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/frames")}><Camera /> Tomar otra foto</button></div>{photos.length === 0 ? <div className="empty-gallery"><Image /><h2>Tu galeria esta esperando</h2><p>Elige un marco y captura tu primer momento.</p><button className="button primary" onClick={() => navigate("/kiosk/frames")}>Comenzar <ArrowRight /></button></div> : <div className="gallery-grid">{photos.map((photo) => <article className="gallery-card" key={photo.id}>{images[photo.id] ? <img src={images[photo.id]} alt="Momento SOPLA aprobado" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<div className="gallery-card-info"><span><strong>{frames.find((frame) => frame.id === photo.frameId)?.name}</strong><small>{new Date(photo.createdAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}</small></span><div><button onClick={() => download(photo)} title="Descargar"><Download /></button><button onClick={() => remove(photo.id)} title="Eliminar"><Trash2 /></button></div></div><span className={`publication-tag ${photo.publicationStatus}`}>{photo.publicationStatus === "private" ? "Privada" : "Lista para redes"}</span></article>)}</div>}<div className="delivery-panel"><div><span className="whatsapp-icon"><MessageCircle /></span><span><strong>Recibe tu galeria en WhatsApp</strong><small>{participant.whatsapp}</small></span></div>{delivery === "sent" ? <span className="delivery-success"><BadgeCheck /> Galeria entregada correctamente</span> : <button className="button whatsapp" onClick={sendGallery} disabled={delivery === "sending"}>{delivery === "sending" ? "Enviando galeria..." : "Enviar ahora"}<ArrowRight /></button>}</div></div></Shell>;
+  return <Shell back="/kiosk/frames" badgeText={`${participant.distance} · 2026`}><div className="gallery-page"><div className="gallery-heading"><div><span className="overline dark-text">GALERIA DE {participant.name.split(" ")[0].toUpperCase()}</span><h1>Momentos para recordar.</h1><p>{photos.length} aprobadas · {participant.photosRemaining} de 4 fotografias disponibles</p></div><button className="button primary" disabled={participant.photosRemaining === 0} onClick={() => navigate("/kiosk/frames")}><Camera /> Tomar otra foto</button></div>{photos.length === 0 ? <div className="empty-gallery"><Image /><h2>Tu galeria esta esperando</h2><p>Elige un marco y captura tu primer momento.</p><button className="button primary" onClick={() => navigate("/kiosk/frames")}>Comenzar <ArrowRight /></button></div> : <div className="gallery-grid">{photos.map((photo) => <article className="gallery-card" key={photo.id}>{images[photo.id] ? <img src={images[photo.id]} alt="Momento SOPLA aprobado" /> : <div className="image-loading"><RefreshCw className="spin" /></div>}<div className="gallery-card-info"><span><strong>{frames.find((frame) => frame.id === photo.frameId)?.name}</strong><small>{new Date(photo.createdAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}</small></span><div><button onClick={() => download(photo)} title="Descargar"><Download /></button><button onClick={() => remove(photo.id)} title="Eliminar"><Trash2 /></button></div></div><span className={`publication-tag ${photo.publicationStatus}`}>{photo.publicationStatus === "private" ? "Privada" : "Lista para redes"}</span></article>)}</div>}<div className="delivery-panel"><div><span className="whatsapp-icon"><MessageCircle /></span><span><strong>Recibe tu galeria en WhatsApp</strong><small>{participant.whatsapp}</small></span></div>{delivery === "sent" ? <span className="delivery-success"><BadgeCheck /> Galeria entregada correctamente</span> : <button className="button whatsapp" onClick={sendGallery} disabled={delivery === "sending"}>{delivery === "sending" ? "Enviando galeria..." : "Enviar ahora"}<ArrowRight /></button>}</div></div></Shell>;
 }
 
 function useCurrentParticipant() {
@@ -538,5 +601,5 @@ function useCurrentParticipant() {
 }
 
 export default function App() {
-  return <Routes><Route path="/" element={<Home />} /><Route path="/admin" element={<AdminLayout><Dashboard /></AdminLayout>} /><Route path="/admin/register" element={<AdminLayout><RegisterParticipant /></AdminLayout>} /><Route path="/admin/activate" element={<AdminLayout><Activation /></AdminLayout>} /><Route path="/admin/wristband/:id" element={<AdminLayout><WristbandCard /></AdminLayout>} /><Route path="/kiosk" element={<KioskStart />} /><Route path="/kiosk/frames" element={<FrameSelection />} /><Route path="/kiosk/camera" element={<CameraCapture />} /><Route path="/kiosk/review" element={<ReviewPhoto />} /><Route path="/kiosk/gallery" element={<Gallery />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
+  return <Routes><Route path="/" element={<Home />} /><Route path="/admin" element={<AdminLayout><Dashboard /></AdminLayout>} /><Route path="/admin/register" element={<AdminLayout><RegisterParticipant /></AdminLayout>} /><Route path="/admin/activate" element={<AdminLayout><Activation /></AdminLayout>} /><Route path="/admin/wristband/:id" element={<AdminLayout><WristbandCard /></AdminLayout>} /><Route path="/register" element={<PublicRegisterParticipant />} /><Route path="/register/:token" element={<PublicWristbandCard />} /><Route path="/kiosk" element={<KioskStart />} /><Route path="/kiosk/frames" element={<FrameSelection />} /><Route path="/kiosk/camera" element={<CameraCapture />} /><Route path="/kiosk/review" element={<ReviewPhoto />} /><Route path="/kiosk/gallery" element={<Gallery />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>;
 }
